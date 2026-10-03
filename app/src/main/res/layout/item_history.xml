@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="6dp"
+    android:layout_marginBottom="6dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="1dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="@color/surface_variant">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvHistoryTimestamp"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="14:30"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="@color/on_surface_variant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnHistorySpeak"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Vorlesen"
+                android:contentDescription="Diese Übersetzung vorlesen"
+                style="@style/Widget.Material3.Button.TonalButton" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Deutsch:"
+            android:textStyle="bold"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="@color/primary" />
+
+        <TextView
+            android:id="@+id/tvHistoryGerman"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Deutsche Übersetzung..."
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="@color/on_surface"
+            android:textIsSelectable="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Original (Englisch):"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textColor="@color/on_surface_variant" />
+
+        <TextView
+            android:id="@+id/tvHistoryOriginal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="English original text..."
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="@color/on_surface_variant"
+            android:textIsSelectable="true" />
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,39 @@
+Categories:
+  - Accessibility
+License: MIT
+AuthorName: Lauju1909
+SourceCode: https://github.com/Lauju1909/TalkBack-Deutsch-Uebersetzer-Android
+IssueTracker: https://github.com/Lauju1909/TalkBack-Deutsch-Uebersetzer-Android/issues
+
+AntiFeatures:
+  - NonFreeComp
+
+AutoName: TalkBack Deutsch-Uebersetzer
+Summary: Real-time screen translation companion for TalkBack and visually impaired users
+Description: |-
+  TalkBack Deutsch-Uebersetzer is an accessibility companion app for Android and TalkBack.
+  It captures foreign on-screen text from third-party apps, games, or websites and translates
+  it directly into German, reading it aloud via the Android Text-to-Speech (TTS) engine.
+
+  Features:
+  - Tailored for TalkBack and screen reader users
+  - Accessibility service with gesture triggers
+  - Quick Settings tile in notification shade for quick toggling
+  - On-device translation support
+  - Auditory earcons and haptic vibration feedback
+  - Free and open source under MIT License
+
+RepoType: git
+Repo: https://github.com/Lauju1909/TalkBack-Deutsch-Uebersetzer-Android.git
+
+Builds:
+  - versionName: '1.2.1'
+    versionCode: 6
+    commit: v1.2.1
+    gradle:
+      - assembleRelease
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: '1.2.1'
+CurrentVersionCode: 6

@@ -1,0 +1,1 @@
+Echtzeit-Übersetzung von Bildschirmtexten für TalkBack und blinde Nutzer.

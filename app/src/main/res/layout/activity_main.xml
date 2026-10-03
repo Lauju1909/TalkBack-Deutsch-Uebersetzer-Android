@@ -1,0 +1,568 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/primary"
+            app:title="@string/app_name"
+            app:titleTextColor="@color/on_primary" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Card 1: Bedienungshilfe aktivieren -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/surface_variant">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/title_status"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold"
+                        android:textColor="@color/primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="TalkBack bleibt auf Google-Sprachausgabe eingestellt. Nichts wird stummgeschaltet!"
+                        android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                    <TextView
+                        android:id="@+id/tvServiceStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/status_service_inactive"
+                        android:textColor="@color/warning"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnEnableService"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/btn_enable_service"
+                        app:icon="@drawable/ic_translate" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDisableService"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Übersetzer ausschalten (z. B. für Sparkasse)"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Card 2: Gesten & Auslöser -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/surface_variant">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Gesten &amp; TalkBack-Steuerung"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold" />
+
+                    <!-- Hauptgeste zum Übersetzen -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="Geste für Übersetzung:"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/spinnerTriggerGesture"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="4dp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchRepeatGesture"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:checked="true"
+                        android:text="Wiederholen-Geste (3 Finger doppelt tippen)" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchStopGesture"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:checked="true"
+                        android:text="Sofort-Stopp-Geste (2 Finger einfach tippen)" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchAutoLiveFocus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:checked="false"
+                        android:text="@string/pref_auto_live_focus" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOpenTalkBackSettings"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="TalkBack Gesten-Einstellungen öffnen"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Card 2c: Übersetzungs-Optionen & Komfort -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/surface_variant">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Übersetzungs-Optionen"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold" />
+
+                    <!-- 1. Original + Übersetzung -->
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchSpeakOriginalFirst"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:checked="false"
+                        android:text="Erst Original (Englisch), dann Übersetzung vorlesen" />
+
+                    <!-- 2. Chat- & Discord-Filter -->
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchChatFilter"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:checked="true"
+                        android:text="Discord- &amp; Chat-Filter (Uhrzeiten/Reaktionen ignorieren)" />
+
+                    <!-- 3. Slang-Wörterbuch -->
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchSlangTranslator"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:checked="true"
+                        android:text="Internet- &amp; Gamer-Slang übersetzen (idk, tbh etc.)" />
+
+                    <!-- 4. Haptisches Feedback -->
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchHapticFeedback"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:checked="true"
+                        android:text="Spürbare Vibrationen (Start, Erfolg, Fehler)" />
+
+                    <!-- 5. Zwischenablage -->
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchClipboardTranslator"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:checked="false"
+                        android:text="Zwischenablage automatisch übersetzen" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Card 2b: Sparkasse & Banking-Schutz -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/surface_variant">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sparkasse &amp; Banking-Sicherheit"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Banking-Apps (wie Sparkasse oder pushTAN) prüfen streng nach fremden Hilfsdiensten und Display-Überlagerungen.\n\n• Alle störenden Überlagerungen wurden komplett entfernt!\n• Du kannst den Übersetzer für deine Banking-Sitzung ganz einfach oben mit 1 Klick ausschalten und danach wieder einschalten (oder über die Kachel in deiner Statusleiste)."
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Card 3: TalkBack Stimme -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/surface_variant">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TalkBack Stimme &amp; Sprach-Engine"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Wähle hier die Sprach-Engine deines Smartphones (Google, Samsung etc.) und die gewünschte Stimme aus:"
+                        android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                    <!-- 1. Sprach-Engine Auswahl -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="1. Sprach-Engine (Google, Samsung etc.):"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/spinnerEngines"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="4dp" />
+
+                    <!-- 2. Stimmen-Auswahl -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="2. Stimme auswählen:"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/spinnerVoices"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="4dp" />
+
+                    <TextView
+                        android:id="@+id/tvActiveVoice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Aktive Stimme: Lädt…"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/primary"
+                        android:textStyle="bold" />
+
+                    <!-- 3. Sprechgeschwindigkeit -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="16dp"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="3. Sprechgeschwindigkeit:"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvSpeedValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="1.00x (Normal)"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="@color/primary"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <SeekBar
+                        android:id="@+id/seekSpeed"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:max="200"
+                        android:progress="50"
+                        android:contentDescription="Sprechgeschwindigkeit Schieberegler" />
+
+                    <!-- 4. Tonhöhe / Stimmhöhe -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="4. Stimmhöhe (Tonhöhe):"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvPitchValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="1.00x (Normal)"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="@color/primary"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <SeekBar
+                        android:id="@+id/seekPitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:max="100"
+                        android:progress="50"
+                        android:contentDescription="Stimmhöhe Schieberegler" />
+
+                    <!-- Reset Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnResetSpeedPitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="end"
+                        android:layout_marginTop="4dp"
+                        android:text="Standard zurücksetzen (1.0x)"
+                        style="@style/Widget.Material3.Button.TextButton" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnTestVoice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/btn_test_voice"
+                        app:icon="@drawable/ic_volume_up" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOpenTtsSettings"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Android Sprachausgabe-Einstellungen öffnen"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Card 4: Simulator -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="32dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/surface_variant">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/title_test_area"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/desc_test_area"
+                        android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="Englischer Text (von TalkBack / Webseite):"
+                        android:textStyle="bold"
+                        android:textColor="@color/primary" />
+
+                    <TextView
+                        android:id="@+id/tvSampleEnglish"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/sample_english_speech"
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSimulateSpeech"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/btn_simulate_speech"
+                        app:icon="@drawable/ic_translate" />
+
+                    <TextView
+                        android:id="@+id/tvTestResultHeader"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="Deutsche Übersetzung (wird gesprochen):"
+                        android:textStyle="bold"
+                        android:textColor="@color/success"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvTestResultContent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/on_surface"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Card 5: Übersetzungsverlauf (Historie) -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/surface_variant">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Letzte Übersetzungen"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnClearHistory"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Leeren"
+                            style="@style/Widget.Material3.Button.TextButton" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvHistoryEmpty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Noch keine Übersetzungen vorhanden."
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/on_surface_variant" />
+
+                    <LinearLayout
+                        android:id="@+id/containerHistoryItems"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="8dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

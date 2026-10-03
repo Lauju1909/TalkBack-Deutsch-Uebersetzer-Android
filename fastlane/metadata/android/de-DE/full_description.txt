@@ -1,0 +1,13 @@
+TalkBack Deutsch-Übersetzer ist eine barrierefreie Begleit-App für Android und TalkBack.
+Sobald fremdsprachige Texte auf dem Display erscheinen (in Apps, Spielen oder auf Webseiten),
+kann die App den Bildschirminhalt automatisch erfassen, ins Deutsche übersetzen und sofort
+über die Android-Sprachausgabe (TTS) vorlesen.
+
+Features:
+- Perfekt abgestimmt auf TalkBack und Screenreader
+- Barrierefreiheitsdienst mit Gestensteuerung (z. B. 2-Finger-Gesten)
+- Schnelleinstellungs-Kachel (Quick Settings Tile) zum schnellen Ein- und Ausschalten
+- On-Device Übersetzung ohne Cloud-Zwang
+- Akustisches und haptisches Feedback
+- Einstellbare Sprechgeschwindigkeit und Tonhöhe
+- Frei und quelloffen unter MIT-Lizenz

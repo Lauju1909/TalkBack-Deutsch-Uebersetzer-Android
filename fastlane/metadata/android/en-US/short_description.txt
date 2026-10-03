@@ -1,0 +1,1 @@
+Real-time screen translation assistant for TalkBack and visually impaired users.

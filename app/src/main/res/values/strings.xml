@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">TalkBack Übersetzer</string>
+    <string name="accessibility_service_name">TalkBack Deutsch-Übersetzer</string>
+    <string name="accessibility_service_description">Fängt englische Texte von TalkBack ab, übersetzt sie automatisch ins Deutsche und liest sie mit der TalkBack-Stimme vor. Auslöser: mit 2 Fingern ZWEIMAL drücken (2-Finger-Doppeltipp).</string>
+    
+    <!-- Hauptmenü & Status -->
+    <string name="title_status">Einrichtung &amp; Status</string>
+    <string name="status_service_active">Bedienungshilfe ist AKTIV (Bereit!)</string>
+    <string name="status_service_inactive">Bedienungshilfe ist AUS</string>
+    <string name="btn_enable_service">Bedienungshilfe aktivieren</string>
+    
+    <string name="title_trigger_modes">Auslöser &amp; Gesten</string>
+    <string name="pref_two_finger_gesture">Mit 2 Fingern ZWEIMAL drücken (2-Finger-Doppeltipp)</string>
+    <string name="pref_volume_keys">Mit beiden Lautstärketasten gleichzeitig auslösen (Lauter + Leiser)</string>
+    <string name="pref_floating_bubble">Schwebenden Schalter auf dem Display anzeigen</string>
+    <string name="pref_auto_live_focus">Live-Modus: Jedes englische Element automatisch sofort auf Deutsch sprechen</string>
+    
+    <string name="title_tts">TalkBack Stimme (Google)</string>
+    <string name="btn_test_voice">Stimme jetzt testen</string>
+    <string name="test_speech_text">Hallo! Ich verwende dieselbe Google-Stimme wie TalkBack und lese alles auf Deutsch vor.</string>
+    
+    <string name="title_test_area">Testbereich (Jetzt ausprobieren)</string>
+    <string name="desc_test_area">Tippe auf den Button oder mit 2 Fingern zweimal, um diesen englischen Text auf Deutsch zu hören:</string>
+    <string name="sample_english_speech">The system settings have been updated successfully. Please tap to continue.</string>
+    <string name="btn_simulate_speech">Englischen Text übersetzen &amp; auf Deutsch sprechen</string>
+</resources>
