@@ -184,6 +184,21 @@
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:textStyle="bold" />
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="Übersetzungs-Qualität &amp; Modus:"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/spinnerTranslationQuality"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="4dp"
+                        android:contentDescription="Übersetzungs-Qualität und Modus auswählen" />
+
                     <!-- 1. Original + Übersetzung -->
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switchSpeakOriginalFirst"

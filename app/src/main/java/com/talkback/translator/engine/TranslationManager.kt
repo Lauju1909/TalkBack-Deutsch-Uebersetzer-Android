@@ -59,7 +59,8 @@ class TranslationManager(private val context: Context) {
     suspend fun translateToGerman(
         text: String,
         useChatFilter: Boolean = false,
-        useSlangExpansion: Boolean = false
+        useSlangExpansion: Boolean = false,
+        preferNeuralOnline: Boolean = true
     ): String = withContext(Dispatchers.IO) {
         var processedText = text.trim()
         if (processedText.isEmpty()) return@withContext ""
@@ -84,49 +85,80 @@ class TranslationManager(private val context: Context) {
             if (cached != null) return@withContext cached
         }
 
-        // 3. Quellsprache bestimmen
-        val langCode = detectLanguage(trimmed)
-        if (langCode.equals("de", ignoreCase = true)) {
-            return@withContext trimmed
+        // 3. Wenn die Nachricht einen Autoren enthält ("JohnDoe: Message text"):
+        // Übersetze nur den eigentlichen Inhalt, damit der Name niemals verfälscht wird!
+        val authorPrefix = extractAuthorPrefix(trimmed)
+        if (authorPrefix != null) {
+            val (author, body) = authorPrefix
+            val translatedBody = translateRawText(body, preferNeuralOnline)
+            val fullResult = "$author: $translatedBody"
+            synchronized(translationCache) {
+                translationCache.put(trimmed, fullResult)
+            }
+            return@withContext fullResult
         }
 
+        val result = translateRawText(trimmed, preferNeuralOnline)
+        synchronized(translationCache) {
+            translationCache.put(trimmed, result)
+        }
+        result
+    }
+
+    private suspend fun translateRawText(text: String, preferNeuralOnline: Boolean): String {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return ""
+
+        // 1. Häufige Umgangssprache / Redewendungen direkt abgleichen (100% natürliches Deutsch)
+        val idiomResult = getIdiomTranslation(trimmed)
+        if (idiomResult != null) {
+            return idiomResult
+        }
+
+        // 2. Quellsprache bestimmen
+        val langCode = detectLanguage(trimmed)
+        if (langCode.equals("de", ignoreCase = true)) {
+            return trimmed
+        }
         val sourceLangTag = TranslateLanguage.fromLanguageTag(langCode) ?: TranslateLanguage.ENGLISH
 
-        // 4. Versuch A: On-Device ML Kit
+        // 3. Hohe Qualität bevorzugt (Google Neural Online Translate - natürlichstes Deutsch)
+        if (preferNeuralOnline) {
+            try {
+                val onlineResult = translateOnline(trimmed)
+                if (onlineResult.isNotBlank() && onlineResult != trimmed) {
+                    return onlineResult
+                }
+            } catch (e: Exception) {
+                Log.w("TranslationManager", "Online Neural translation failed: ${e.message}, falling back to ML Kit")
+            }
+        }
+
+        // 4. ML Kit On-Device (Offline oder Fallback)
         try {
             val translator = getOrCreateTranslator(sourceLangTag)
             val conditions = DownloadConditions.Builder().build()
             translator.downloadModelIfNeeded(conditions).await()
             val result = translator.translate(trimmed).await()
             if (result.isNotBlank() && result != trimmed) {
-                synchronized(translationCache) {
-                    translationCache.put(trimmed, result)
-                }
-                return@withContext result
+                return result
             }
         } catch (e: Exception) {
             Log.w("TranslationManager", "ML Kit translation failed: ${e.message}, falling back...")
         }
 
-        // 5. Versuch B: Blitzschnelle Fallback-Übersetzung via Web (kein API-Key nötig)
-        try {
-            val onlineResult = translateOnline(trimmed)
-            if (onlineResult.isNotBlank() && onlineResult != trimmed) {
-                synchronized(translationCache) {
-                    translationCache.put(trimmed, onlineResult)
+        // 5. Falls Offline-Modus gewählt war, aber ML Kit fehlschlug: Online Notfall-Versuch
+        if (!preferNeuralOnline) {
+            try {
+                val onlineResult = translateOnline(trimmed)
+                if (onlineResult.isNotBlank() && onlineResult != trimmed) {
+                    return onlineResult
                 }
-                return@withContext onlineResult
-            }
-        } catch (e: Exception) {
-            Log.w("TranslationManager", "Online fallback failed: ${e.message}")
+            } catch (_: Exception) {}
         }
 
-        // 6. Versuch C: Lokales Wörterbuch
-        val dictResult = fallbackDictionary(trimmed)
-        synchronized(translationCache) {
-            translationCache.put(trimmed, dictResult)
-        }
-        dictResult
+        // 6. Lokales Wörterbuch
+        return fallbackDictionary(trimmed)
     }
 
     private suspend fun detectLanguage(text: String): String {
@@ -148,10 +180,10 @@ class TranslationManager(private val context: Context) {
         val conn = url.openConnection() as HttpURLConnection
         conn.connectTimeout = 3000
         conn.readTimeout = 3000
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
 
         if (conn.responseCode == 200) {
-            val reader = BufferedReader(InputStreamReader(conn.inputStream))
+            val reader = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8))
             val sb = StringBuilder()
             var line: String?
             while (reader.readLine().also { line = it } != null) {
@@ -166,7 +198,8 @@ class TranslationManager(private val context: Context) {
                 val piece = sentences.getJSONArray(i).getString(0)
                 resultBuilder.append(piece)
             }
-            return resultBuilder.toString().trim()
+            val result = resultBuilder.toString().trim()
+            if (result.isNotBlank()) return result
         }
         return ""
     }
@@ -300,11 +333,74 @@ class TranslationManager(private val context: Context) {
             return cleaned
         }
 
+        fun extractAuthorPrefix(text: String): Pair<String, String>? {
+            val colonIndex = text.indexOf(": ")
+            if (colonIndex <= 0) return null
+            val authorPart = text.substring(0, colonIndex).trim()
+            val bodyPart = text.substring(colonIndex + 2).trim()
+            if (bodyPart.isBlank()) return null
+            val words = authorPart.split(Regex("\\s+")).filter { it.isNotBlank() }
+            if (words.size in 1..3 && authorPart.length < 30 && !authorPart.endsWith(".") && !isChatMetadataOrTimestamp(authorPart)) {
+                return Pair(authorPart, bodyPart)
+            }
+            return null
+        }
+
+        fun getIdiomTranslation(text: String): String? {
+            val lower = text.lowercase().trim().trimEnd('.', '!', '?', ',')
+            val idioms = mapOf(
+                "i'm down" to "Ich bin dabei",
+                "im down" to "Ich bin dabei",
+                "i am down" to "Ich bin dabei",
+                "sounds good" to "Klingt gut",
+                "sound good" to "Klingt gut",
+                "no problem" to "Kein Problem",
+                "no worries" to "Keine Sorge",
+                "dont worry" to "Mach dir keine Sorgen",
+                "don't worry" to "Mach dir keine Sorgen",
+                "take care" to "Pass auf dich auf",
+                "take it easy" to "Mach's gut",
+                "hit me up" to "Meld dich bei mir",
+                "let me know" to "Sag mir Bescheid",
+                "see you soon" to "Bis bald",
+                "see you later" to "Bis später",
+                "see ya" to "Bis dann",
+                "have fun" to "Viel Spaß",
+                "good luck" to "Viel Glück",
+                "whats up" to "Was geht",
+                "what's up" to "Was geht",
+                "my bad" to "Mein Fehler",
+                "never mind" to "Macht nichts",
+                "nvm" to "Macht nichts",
+                "you're welcome" to "Gern geschehen",
+                "you are welcome" to "Gern geschehen",
+                "no big deal" to "Keine große Sache",
+                "makes sense" to "Ergibt Sinn",
+                "make sense" to "Ergibt Sinn",
+                "keep it up" to "Weiter so",
+                "way to go" to "Klasse gemacht",
+                "good job" to "Gut gemacht",
+                "well done" to "Gut gemacht",
+                "catch you later" to "Bis später",
+                "i feel you" to "Ich verstehe dich",
+                "i know right" to "Ja, voll",
+                "for real" to "Im Ernst",
+                "as far as i know" to "Soweit ich weiß",
+                "to be honest" to "Um ehrlich zu sein",
+                "by the way" to "Übrigens",
+                "at the moment" to "Im Moment",
+                "right now" to "Gerade jetzt",
+                "as soon as possible" to "So schnell wie möglich"
+            )
+            return idioms[lower]
+        }
+
         fun expandSlangTerms(text: String): String {
             var res = text
-            val slangMap = mapOf(
+            val slangMap = linkedMapOf(
                 "idk" to "I don't know",
                 "tbh" to "to be honest",
+                "tbf" to "to be fair",
                 "afk" to "away from keyboard",
                 "brb" to "be right back",
                 "omg" to "oh my god",
@@ -312,7 +408,14 @@ class TranslationManager(private val context: Context) {
                 "ty" to "thank you",
                 "np" to "no problem",
                 "gg" to "good game",
+                "wp" to "well played",
+                "ggwp" to "good game well played",
+                "gl" to "good luck",
+                "hf" to "have fun",
+                "glhf" to "good luck have fun",
+                "gj" to "good job",
                 "wtf" to "what the heck",
+                "wth" to "what the heck",
                 "imo" to "in my opinion",
                 "imho" to "in my humble opinion",
                 "pls" to "please",
@@ -325,7 +428,65 @@ class TranslationManager(private val context: Context) {
                 "asap" to "as soon as possible",
                 "nvm" to "never mind",
                 "idc" to "I don't care",
-                "tldr" to "too long didn't read"
+                "tldr" to "too long didn't read",
+                "ngl" to "not gonna lie",
+                "fr" to "for real",
+                "ong" to "on god",
+                "bruh" to "brother",
+                "bro" to "brother",
+                "lmao" to "laughing so much",
+                "lmfao" to "laughing so much",
+                "lol" to "laughing out loud",
+                "rofl" to "rolling on the floor laughing",
+                "wdym" to "what do you mean",
+                "hmu" to "hit me up",
+                "gtg" to "got to go",
+                "g2g" to "got to go",
+                "cya" to "see you",
+                "gn" to "good night",
+                "gm" to "good morning",
+                "sup" to "what's up",
+                "wbu" to "what about you",
+                "hbu" to "how about you",
+                "smh" to "shaking my head",
+                "ofc" to "of course",
+                "dw" to "don't worry",
+                "ik" to "I know",
+                "ikr" to "I know right",
+                "ye" to "yes",
+                "yea" to "yes",
+                "yep" to "yes",
+                "nah" to "no",
+                "nope" to "no",
+                "bc" to "because",
+                "bcoz" to "because",
+                "sry" to "sorry",
+                "yw" to "you are welcome",
+                "ez" to "easy",
+                "op" to "overpowered",
+                "dps" to "damage per second",
+                "lfg" to "looking for group",
+                "inv" to "invite",
+                "dc" to "disconnected",
+                "mb" to "my bad",
+                "atm" to "at the moment",
+                "eta" to "estimated time of arrival",
+                "pov" to "point of view",
+                "aka" to "also known as",
+                "gonna" to "going to",
+                "wanna" to "want to",
+                "gotta" to "got to",
+                "kinda" to "kind of",
+                "dunno" to "don't know",
+                "lemme" to "let me",
+                "gimme" to "give me",
+                "imma" to "I am going to",
+                "tryna" to "trying to",
+                "aint" to "is not",
+                "ain't" to "is not",
+                "u" to "you",
+                "r" to "are",
+                "ur" to "your"
             )
             for ((slang, expansion) in slangMap) {
                 val regex = Regex("""(?i)\b$slang\b""")

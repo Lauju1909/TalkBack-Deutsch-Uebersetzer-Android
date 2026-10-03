@@ -6,6 +6,7 @@ import com.talkback.translator.service.TalkBackTranslationService
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -127,6 +128,23 @@ class TranslationLogicTest {
         assertEquals("eat an egg", TranslationManager.expandSlangTerms("eat an egg"))
         // "kidk" enthält "idk", darf nicht ersetzt werden!
         assertEquals("kidk", TranslationManager.expandSlangTerms("kidk"))
+        // "run" enthält "u", darf nicht ersetzt werden!
+        assertEquals("run very fast", TranslationManager.expandSlangTerms("run very fast"))
+        // "red" enthält "r", darf nicht ersetzt werden!
+        assertEquals("red car", TranslationManager.expandSlangTerms("red car"))
+        // "turn" enthält "ur", darf nicht ersetzt werden!
+        assertEquals("turn around", TranslationManager.expandSlangTerms("turn around"))
+    }
+
+    @Test
+    fun testExpandedGamerSlangTerms() {
+        assertEquals("not going to lie for real", TranslationManager.expandSlangTerms("ngl fr"))
+        assertEquals("what do you mean brother", TranslationManager.expandSlangTerms("wdym bruh"))
+        assertEquals("you are your", TranslationManager.expandSlangTerms("u r ur"))
+        assertEquals("going to want to got to", TranslationManager.expandSlangTerms("gonna wanna gotta"))
+        assertEquals("hit me up got to go see you", TranslationManager.expandSlangTerms("hmu gtg cya"))
+        assertEquals("laughing so much", TranslationManager.expandSlangTerms("lmao"))
+        assertEquals("good luck have fun well played", TranslationManager.expandSlangTerms("glhf wp"))
     }
 
     // =========================================================================
@@ -194,5 +212,52 @@ class TranslationLogicTest {
         val pieces = emptyList<String>()
         val assembled = TalkBackTranslationService.assembleChatMessage(pieces)
         assertEquals("", assembled)
+    }
+
+    // =========================================================================
+    // 6. Tests für extractAuthorPrefix & getIdiomTranslation
+    // =========================================================================
+
+    @Test
+    fun testExtractAuthorPrefixValid() {
+        val result = TranslationManager.extractAuthorPrefix("JohnDoe: Can you help me with this quest?")
+        assertNotNull(result)
+        assertEquals("JohnDoe", result?.first)
+        assertEquals("Can you help me with this quest?", result?.second)
+
+        val result2 = TranslationManager.extractAuthorPrefix("Gamer Pro 99: Let's play tonight")
+        assertNotNull(result2)
+        assertEquals("Gamer Pro 99", result2?.first)
+        assertEquals("Let's play tonight", result2?.second)
+    }
+
+    @Test
+    fun testExtractAuthorPrefixInvalid() {
+        // Kein Doppelpunkt
+        val result1 = TranslationManager.extractAuthorPrefix("Hello how are you?")
+        assertNull(result1)
+
+        // Mehr als 3 Wörter vor Doppelpunkt (ganzer Satz)
+        val result2 = TranslationManager.extractAuthorPrefix("This is a very long sentence before the colon: message")
+        assertNull(result2)
+
+        // Doppelpunkt am Anfang
+        val result3 = TranslationManager.extractAuthorPrefix(": empty author")
+        assertNull(result3)
+    }
+
+    @Test
+    fun testGetIdiomTranslation() {
+        assertEquals("Ich bin dabei", TranslationManager.getIdiomTranslation("I'm down"))
+        assertEquals("Klingt gut", TranslationManager.getIdiomTranslation("Sounds good!"))
+        assertEquals("Keine Sorge", TranslationManager.getIdiomTranslation("No worries."))
+        assertEquals("Pass auf dich auf", TranslationManager.getIdiomTranslation("Take care"))
+        assertEquals("Meld dich bei mir", TranslationManager.getIdiomTranslation("Hit me up!"))
+        assertEquals("Bis bald", TranslationManager.getIdiomTranslation("See you soon"))
+        assertEquals("Was geht", TranslationManager.getIdiomTranslation("What's up?"))
+        assertEquals("Mein Fehler", TranslationManager.getIdiomTranslation("My bad"))
+        assertEquals("Macht nichts", TranslationManager.getIdiomTranslation("Never mind"))
+        assertEquals("Gern geschehen", TranslationManager.getIdiomTranslation("You're welcome"))
+        assertEquals("Ergibt Sinn", TranslationManager.getIdiomTranslation("Makes sense"))
     }
 }

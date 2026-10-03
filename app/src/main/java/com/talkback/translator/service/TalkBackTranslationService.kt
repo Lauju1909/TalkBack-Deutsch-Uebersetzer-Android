@@ -160,8 +160,9 @@ class TalkBackTranslationService : AccessibilityService() {
                             val useChat = prefs.getBoolean("pref_chat_filter_enabled", true)
                             val useSlang = prefs.getBoolean("pref_slang_translator_enabled", true)
                             val speakOriginal = prefs.getBoolean("pref_speak_original_first", false)
+                            val preferNeural = prefs.getString("pref_translation_mode", "neural_online") != "offline_only"
 
-                            val german = translationManager.translateToGerman(text, useChat, useSlang)
+                            val german = translationManager.translateToGerman(text, useChat, useSlang, preferNeural)
                             if (german.isNotBlank() && german != text) {
                                 vibrateSuccess()
                                 lastSpokenOriginalText = text
@@ -334,8 +335,9 @@ class TalkBackTranslationService : AccessibilityService() {
                     val useChat = prefs.getBoolean("pref_chat_filter_enabled", true)
                     val useSlang = prefs.getBoolean("pref_slang_translator_enabled", true)
                     val speakOriginalFirst = prefs.getBoolean("pref_speak_original_first", false)
+                    val preferNeural = prefs.getString("pref_translation_mode", "neural_online") != "offline_only"
 
-                    val german = translationManager.translateToGerman(bestText, useChat, useSlang)
+                    val german = translationManager.translateToGerman(bestText, useChat, useSlang, preferNeural)
                     if (german.isNotBlank() && german != bestText) {
                         vibrateSuccess()
                         lastSpokenOriginalText = bestText
@@ -443,6 +445,7 @@ class TalkBackTranslationService : AccessibilityService() {
             val useChat = prefs.getBoolean("pref_chat_filter_enabled", true)
             val useSlang = prefs.getBoolean("pref_slang_translator_enabled", true)
             val speakOriginalFirst = prefs.getBoolean("pref_speak_original_first", false)
+            val preferNeural = prefs.getString("pref_translation_mode", "neural_online") != "offline_only"
 
             Log.d(TAG, "Translating text: $targetText")
             Toast.makeText(this@TalkBackTranslationService, "Übersetze auf Deutsch…", Toast.LENGTH_SHORT).show()
@@ -450,7 +453,8 @@ class TalkBackTranslationService : AccessibilityService() {
             val germanText = translationManager.translateToGerman(
                 targetText,
                 useChatFilter = useChat,
-                useSlangExpansion = useSlang
+                useSlangExpansion = useSlang,
+                preferNeuralOnline = preferNeural
             )
 
             if (germanText.isNotBlank()) {

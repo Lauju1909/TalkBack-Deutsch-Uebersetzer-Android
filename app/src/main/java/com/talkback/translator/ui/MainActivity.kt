@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
 
             setupToolbar()
             setupTriggerGestureSelection()
+            setupTranslationQualitySelection()
             loadPreferences()
             setupListeners()
             setupEngineSelection()
@@ -83,7 +84,7 @@ class MainActivity : AppCompatActivity() {
         try {
             setSupportActionBar(binding.toolbar)
             supportActionBar?.title = getString(R.string.app_name)
-            supportActionBar?.subtitle = "Version 1.2.1 (Discord-Nachrichten Fix)"
+            supportActionBar?.subtitle = "Version 1.3.0 (Beste Übersetzungsqualität)"
         } catch (e: Exception) {
             Log.w("MainActivity", "Toolbar setup: ${e.message}")
         }
@@ -91,6 +92,44 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkModelStatus() {
         app.translationManager.preloadEnglishGermanModel()
+    }
+
+    private val translationQualityOptions = listOf(
+        "Hohe Qualität (Google Neural Online - Natürlichstes Deutsch)" to "neural_online",
+        "Offline-Modus (ML Kit - Schnell & ohne Internet)" to "offline_only"
+    )
+
+    private fun setupTranslationQualitySelection() {
+        try {
+            val labels = translationQualityOptions.map { it.first }
+            val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+            binding.spinnerTranslationQuality.adapter = adapter
+
+            val prefs = getSharedPreferences("translator_settings", Context.MODE_PRIVATE)
+            val savedValue = prefs.getString("pref_translation_mode", "neural_online") ?: "neural_online"
+            val index = translationQualityOptions.indexOfFirst { it.second == savedValue }.coerceAtLeast(0)
+            binding.spinnerTranslationQuality.setSelection(index, false)
+
+            var isInitial = true
+            binding.spinnerTranslationQuality.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    if (!isInitial) {
+                        val chosen = translationQualityOptions[position]
+                        prefs.edit().putString("pref_translation_mode", chosen.second).apply()
+                        val toastText = if (chosen.second == "neural_online") {
+                            "Modus: Hohe Qualität (Google Neural Online)"
+                        } else {
+                            "Modus: Offline-Modus (ML Kit)"
+                        }
+                        Toast.makeText(this@MainActivity, toastText, Toast.LENGTH_SHORT).show()
+                    }
+                    isInitial = false
+                }
+                override fun onNothingSelected(parent: AdapterView<*>?) {}
+            }
+        } catch (e: Exception) {
+            Log.w("MainActivity", "setupTranslationQualitySelection error: ${e.message}")
+        }
     }
 
     private fun setupTriggerGestureSelection() {
@@ -412,11 +451,13 @@ class MainActivity : AppCompatActivity() {
                 val useChat = prefs.getBoolean("pref_chat_filter_enabled", true)
                 val useSlang = prefs.getBoolean("pref_slang_translator_enabled", true)
                 val speakOriginalFirst = prefs.getBoolean("pref_speak_original_first", false)
+                val preferNeural = prefs.getString("pref_translation_mode", "neural_online") != "offline_only"
 
                 val germanTranslation = app.translationManager.translateToGerman(
                     englishSample,
                     useChatFilter = useChat,
-                    useSlangExpansion = useSlang
+                    useSlangExpansion = useSlang,
+                    preferNeuralOnline = preferNeural
                 )
 
                 binding.tvTestResultHeader.visibility = View.VISIBLE
