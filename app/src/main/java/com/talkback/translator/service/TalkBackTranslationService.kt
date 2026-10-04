@@ -24,8 +24,11 @@ import com.talkback.translator.engine.SpeechManager
 import com.talkback.translator.engine.TranslationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -263,6 +266,7 @@ class TalkBackTranslationService : AccessibilityService() {
 
     private var lastLiveSpokenText: String = ""
     private var lastLiveSpokenTime: Long = 0L
+    private var liveJob: Job? = null
     private var lastFocusedTalkBackText: String = ""
     private var lastFocusedTalkBackTime: Long = 0L
 
@@ -301,13 +305,13 @@ class TalkBackTranslationService : AccessibilityService() {
             source.recycle()
         }
 
-        val bestText = when {
+        val bestText = removeRepeatedSegments(when {
             extractedFromSource.isNotBlank() && (isDiscord || extractedFromSource.length > eventTextJoined.length) -> extractedFromSource
             eventDesc.length > eventTextJoined.length + 5 -> eventDesc
             eventTextJoined.isNotBlank() -> eventTextJoined
             eventDesc.isNotBlank() -> eventDesc
             else -> extractedFromSource
-        }.trim()
+        }.trim())
 
         if (bestText.isBlank()) return
 
@@ -322,14 +326,22 @@ class TalkBackTranslationService : AccessibilityService() {
 
         if (autoLive) {
             val now = System.currentTimeMillis()
-            // Verhindert doppeltes Vorlesen desselben Texts innerhalb von 1.5 Sekunden
-            if (bestText == lastLiveSpokenText && (now - lastLiveSpokenTime) < 1500) {
+            // Verhindert doppeltes Vorlesen derselben Nachricht (auch wenn ein Event nur einen Teil,
+            // z. B. das Zitat einer Discord-Antwort, und das nächste die ganze Nachricht liefert)
+            val normNew = bestText.lowercase().replace(Regex("\\s+"), " ").trim()
+            val normLast = lastLiveSpokenText.lowercase().replace(Regex("\\s+"), " ").trim()
+            val isSameMessage = normLast.isNotEmpty() && (normNew == normLast || normLast.contains(normNew))
+            if (isSameMessage && (now - lastLiveSpokenTime) < 3000) {
                 return
             }
             lastLiveSpokenText = bestText
             lastLiveSpokenTime = now
 
-            serviceScope.launch {
+            // Kurzes Entprellen: Mehrere Events für dieselbe Nachricht (Fokus, Auswahl, Ansage)
+            // kommen fast gleichzeitig. Nur das letzte wird übersetzt und genau einmal gesprochen.
+            liveJob?.cancel()
+            liveJob = serviceScope.launch {
+                delay(250)
                 val isGerman = translationManager.isLikelyGerman(bestText)
                 if (!isGerman) {
                     val useChat = prefs.getBoolean("pref_chat_filter_enabled", true)
@@ -338,6 +350,7 @@ class TalkBackTranslationService : AccessibilityService() {
                     val preferNeural = prefs.getString("pref_translation_mode", "neural_online") != "offline_only"
 
                     val german = translationManager.translateToGerman(bestText, useChat, useSlang, preferNeural)
+                    if (!isActive) return@launch
                     if (german.isNotBlank() && german != bestText) {
                         vibrateSuccess()
                         lastSpokenOriginalText = bestText
@@ -433,6 +446,9 @@ class TalkBackTranslationService : AccessibilityService() {
 
             // Text-Puffer zurücksetzen, damit nächste Aktion nicht dieselbe Nachricht wiederholt
             lastFocusedTalkBackText = ""
+
+            // Doppelte Textteile entfernen (z. B. Discord-Antworten mit Zitat)
+            targetText = removeRepeatedSegments(targetText)
 
             if (targetText.isBlank()) {
                 vibrateNotFound()
@@ -606,7 +622,7 @@ class TalkBackTranslationService : AccessibilityService() {
             val containerDesc = msgContainer.contentDescription?.toString()?.trim() ?: ""
             val cleanedDesc = TranslationManager.cleanChatText(containerDesc)
             if (cleanedDesc.length > 5 && (cleanedDesc.contains(" ") || cleanedDesc.length > 20)) {
-                return cleanedDesc
+                return removeRepeatedSegments(cleanedDesc)
             }
 
             val pieces = mutableListOf<String>()
@@ -760,30 +776,34 @@ class TalkBackTranslationService : AccessibilityService() {
             if (rawPieces.isEmpty()) return ""
 
             // 1. Zeitstempel und reine Chat-Metadaten herausfiltern
-            val validPieces = mutableListOf<String>()
+            val cleanedPieces = mutableListOf<String>()
             for (p in rawPieces) {
                 if (TranslationManager.isChatMetadataOrTimestamp(p)) continue
                 val cleaned = TranslationManager.cleanChatText(p).trim()
                 if (cleaned.isNotBlank()) {
-                    validPieces.add(cleaned)
+                    cleanedPieces.add(cleaned)
                 }
             }
+
+            // 2. Doppelte Bausteine entfernen (z. B. Discord-Antworten, bei denen die
+            //    zitierte Nachricht sowohl im Container als auch im Kindknoten steht)
+            val validPieces = dedupePieces(cleanedPieces)
 
             if (validPieces.isEmpty()) {
                 return rawPieces.firstOrNull()?.trim() ?: ""
             }
 
             if (validPieces.size == 1) {
-                return validPieces[0]
+                return removeRepeatedSegments(validPieces[0])
             }
 
-            // 2. Ersten Teil auf Autorenschaft prüfen (z. B. "Laurin", "Gamer99")
+            // 3. Ersten Teil auf Autorenschaft prüfen (z. B. "Laurin", "Gamer99")
             val first = validPieces[0]
             val firstClean = first.trimEnd(':').trim()
             val firstWords = firstClean.split(Regex("\\s+")).filter { it.isNotBlank() }
             val isAuthor = firstWords.size <= 3 && firstClean.length < 30 && !firstClean.endsWith(".") && !TranslationManager.isChatMetadataOrTimestamp(firstClean)
 
-            return if (isAuthor && validPieces.size >= 2) {
+            val result = if (isAuthor && validPieces.size >= 2) {
                 val body = validPieces.subList(1, validPieces.size).joinToString(" ").trim()
                 if (body.startsWith(firstClean, ignoreCase = true)) {
                     body
@@ -793,6 +813,88 @@ class TalkBackTranslationService : AccessibilityService() {
             } else {
                 validPieces.joinToString(" ")
             }
+            return removeRepeatedSegments(result)
         }
+
+        private fun normalizeForCompare(s: String): String =
+            s.lowercase()
+                .replace(Regex("[\\p{Punct}…„“”‚‘’«»]"), " ")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+
+        /**
+         * Entfernt Bausteine, die exakt doppelt vorkommen oder vollständig in einem
+         * anderen (längeren) Baustein enthalten sind. Reihenfolge bleibt erhalten.
+         */
+        fun dedupePieces(pieces: List<String>): List<String> {
+            val norms = pieces.map { normalizeForCompare(it) }
+            val result = mutableListOf<String>()
+            val seen = mutableSetOf<String>()
+            for (i in pieces.indices) {
+                val n = norms[i]
+                if (n.isBlank() || !seen.add(n)) continue
+                val containedElsewhere = norms.indices.any { j ->
+                    if (j == i) return@any false
+                    val other = norms[j]
+                    if (other.length <= n.length) return@any false
+                    val wordContained = " $other ".contains(" $n ")
+                    // Kurze Bausteine (z. B. Autorennamen) nur entfernen, wenn der andere damit beginnt
+                    wordContained && (n.length >= 8 || other.startsWith("$n "))
+                }
+                if (!containedElsewhere) result.add(pieces[i])
+            }
+            return result
+        }
+
+        /**
+         * Entfernt wiederholte Sätze und wiederholte Wortfolgen aus einem Text,
+         * damit eine Nachricht (z. B. Discord-Antwort mit Zitat) nicht doppelt vorgelesen wird.
+         */
+        fun removeRepeatedSegments(text: String): String {
+            val trimmed = text.trim()
+            if (trimmed.isEmpty()) return trimmed
+
+            val words = trimmed.split(Regex("\\s+")).filter { it.isNotBlank() }
+            if (words.size < 2 || words.size > 400) return trimmed
+            val norm = words.map { normalizeForCompare(it) }
+
+            val keep = BooleanArray(words.size) { true }
+            var i = 0
+            while (i < words.size) {
+                var skip = 0
+                // Längste Wortfolge ab i suchen, die bereits vorher vollständig vorkam
+                var len = minOf(words.size - i, i)
+                while (len >= 2) {
+                    // Nicht-angrenzende Wiederholungen erst ab 4 Wörtern, angrenzende ab 2 Wörtern
+                    var found = false
+                    for (j in 0..(i - len)) {
+                        val adjacent = j + len == i
+                        if (len < 4 && !adjacent) continue
+                        var match = true
+                        for (k in 0 until len) {
+                            if (norm[j + k].isEmpty() || norm[j + k] != norm[i + k]) { match = false; break }
+                        }
+                        if (match) { found = true; break }
+                    }
+                    if (found) { skip = len; break }
+                    len--
+                }
+                if (skip > 0) {
+                    for (k in i until i + skip) keep[k] = false
+                    i += skip
+                } else {
+                    i++
+                }
+            }
+
+            val sb = StringBuilder()
+            for (idx in words.indices) {
+                if (!keep[idx]) continue
+                if (sb.isNotEmpty()) sb.append(' ')
+                sb.append(words[idx])
+            }
+            return sb.toString().trim().trimEnd(',', ';', ':').trim()
+        }
+
     }
 }

@@ -260,4 +260,47 @@ class TranslationLogicTest {
         assertEquals("Gern geschehen", TranslationManager.getIdiomTranslation("You're welcome"))
         assertEquals("Ergibt Sinn", TranslationManager.getIdiomTranslation("Makes sense"))
     }
+
+    // =========================================================================
+    // 7. Discord-Antworten: Nichts darf doppelt vorgelesen werden
+    // =========================================================================
+
+    @Test
+    fun testDiscordReplyQuotedTextNotDuplicated() {
+        // Zitierte Nachricht steht im Antwort-Container UND als eigener Kindknoten
+        val pieces = listOf(
+            "Alex", "Are you coming tonight?",
+            "Laurin", "Today at 14:30", "Alex Are you coming tonight?", "Yes I will be there"
+        )
+        val assembled = TalkBackTranslationService.assembleChatMessage(pieces)
+        val occurrences = Regex("Are you coming tonight", RegexOption.IGNORE_CASE).findAll(assembled).count()
+        assertEquals(1, occurrences)
+        assertTrue(assembled.contains("Yes I will be there"))
+    }
+
+    @Test
+    fun testDiscordExactDuplicatePiecesRemoved() {
+        val pieces = listOf("Laurin", "Hello there my friend", "Hello there my friend")
+        assertEquals("Laurin: Hello there my friend", TalkBackTranslationService.assembleChatMessage(pieces))
+    }
+
+    @Test
+    fun testRemoveRepeatedSegments() {
+        assertEquals("Laurin: hello how are you", TalkBackTranslationService.removeRepeatedSegments("Laurin: hello how are you Laurin: hello how are you"))
+        assertEquals("hi there.", TalkBackTranslationService.removeRepeatedSegments("hi there. hi there."))
+        assertEquals(
+            "Replying to Alex can you help me with the quest Sure I can",
+            TalkBackTranslationService.removeRepeatedSegments("Replying to Alex can you help me with the quest Sure I can can you help me with the quest")
+        )
+        // Normale Texte bleiben unverändert
+        assertEquals("I really really like it", TalkBackTranslationService.removeRepeatedSegments("I really really like it"))
+        assertEquals("Can you help me with this quest?", TalkBackTranslationService.removeRepeatedSegments("Can you help me with this quest?"))
+        assertEquals("", TalkBackTranslationService.removeRepeatedSegments(""))
+    }
+
+    @Test
+    fun testDedupeKeepsShortAuthorWhenNotPrefix() {
+        val result = TalkBackTranslationService.dedupePieces(listOf("Tom", "I told Tom to come"))
+        assertEquals(listOf("Tom", "I told Tom to come"), result)
+    }
 }
