@@ -25,6 +25,16 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingTextToSpeak: String? = null
 
+    var isSpeaking: Boolean = false
+        private set
+
+    val isSpeakingNow: Boolean
+        get() = try {
+            isSpeaking || (tts?.isSpeaking == true)
+        } catch (_: Exception) {
+            isSpeaking
+        }
+
     var currentEnginePackage: String = ""
         private set
 
@@ -107,6 +117,17 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
 
             loadSpeedAndPitch()
             applySpeedAndPitch()
+
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            try {
+                ttsInstance.setAudioAttributes(audioAttributes)
+            } catch (e: Exception) {
+                Log.w("SpeechManager", "setAudioAttributes failed: ${e.message}")
+            }
+
             isInitialized = true
             applyPreferredVoice()
 
@@ -242,29 +263,49 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
 
     private var audioFocusRequest: AudioFocusRequest? = null
 
+    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        Log.d("SpeechManager", "onAudioFocusChange: focusChange=$focusChange")
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                // TalkBack oder System möchte sprechen / Audio wiederholen -> Deutsche Stimme sofort unterbrechen!
+                Log.d("SpeechManager", "AudioFocus lost -> interrupting German speech immediately")
+                stop()
+            }
+        }
+    }
+
     private fun requestTransientAudioFocus() {
         try {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-                    .setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_ASSISTANT)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                            .build()
-                    )
+                val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(audioAttributes)
+                    .setAcceptsDelayedFocusGain(false)
+                    .setWillPauseWhenDucked(true)
+                    .setOnAudioFocusChangeListener(audioFocusChangeListener, mainHandler)
                     .build()
                 audioFocusRequest = req
-                audioManager.requestAudioFocus(req)
+                val res = audioManager.requestAudioFocus(req)
+                Log.d("SpeechManager", "requestTransientAudioFocus result: $res")
             } else {
                 @Suppress("DEPRECATION")
-                audioManager.requestAudioFocus(
-                    null,
-                    AudioManager.STREAM_MUSIC,
-                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                val res = audioManager.requestAudioFocus(
+                    audioFocusChangeListener,
+                    AudioManager.STREAM_ACCESSIBILITY,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
                 )
+                Log.d("SpeechManager", "requestTransientAudioFocus (legacy) result: $res")
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.w("SpeechManager", "requestTransientAudioFocus error: ${e.message}")
+        }
     }
 
     private fun releaseAudioFocus() {
@@ -275,7 +316,7 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
                 audioFocusRequest = null
             } else {
                 @Suppress("DEPRECATION")
-                audioManager.abandonAudioFocus(null)
+                audioManager.abandonAudioFocus(audioFocusChangeListener)
             }
         } catch (_: Exception) {}
     }
@@ -297,32 +338,45 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
             return
         }
 
+        // Falls noch alte Sprachausgabe läuft, sofort beenden
+        if (isSpeakingNow) {
+            try { tts?.stop() } catch (_: Exception) {}
+        }
+
         val rateToUse = (speechRate ?: this.speechRate).coerceIn(0.5f, 2.5f)
         val pitchToUse = (pitch ?: this.speechPitch).coerceIn(0.5f, 1.5f)
         tts?.setSpeechRate(rateToUse)
         tts?.setPitch(pitchToUse)
 
+        // Exklusiven AudioFocus fordern (AUDIOFOCUS_GAIN_TRANSIENT) -> Zwingt TalkBack, sofort mit Englisch aufzuhören!
         requestTransientAudioFocus()
 
         val queueMode = if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         val utteranceId = "tb_trans_${System.currentTimeMillis()}"
 
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(id: String?) {}
+            override fun onStart(id: String?) {
+                if (id == utteranceId) {
+                    isSpeaking = true
+                }
+            }
             override fun onDone(id: String?) {
                 if (id == utteranceId) {
+                    isSpeaking = false
                     releaseAudioFocus()
                     mainHandler.post { onComplete?.invoke() }
                 }
             }
             override fun onError(id: String?) {
                 if (id == utteranceId) {
+                    isSpeaking = false
                     releaseAudioFocus()
                     mainHandler.post { onComplete?.invoke() }
                 }
             }
             override fun onStop(id: String?, interrupted: Boolean) {
                 if (id == utteranceId) {
+                    isSpeaking = false
                     releaseAudioFocus()
                     mainHandler.post { onComplete?.invoke() }
                 }
@@ -330,15 +384,25 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
         })
 
         val params = Bundle().apply {
-            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
+            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ACCESSIBILITY)
             putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
             putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId)
         }
 
         val result = tts?.speak(text, queueMode, params, utteranceId)
-        if (result != TextToSpeech.SUCCESS) {
-            val fallback = tts?.speak(text, queueMode, null, utteranceId)
-            if (fallback != TextToSpeech.SUCCESS) {
+        if (result == TextToSpeech.SUCCESS) {
+            isSpeaking = true
+        } else {
+            // Fallback auf STREAM_MUSIC falls TTS Engine STREAM_ACCESSIBILITY im Bundle ablehnt
+            val fallbackParams = Bundle().apply {
+                putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
+                putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId)
+            }
+            val fallback = tts?.speak(text, queueMode, fallbackParams, utteranceId)
+            if (fallback == TextToSpeech.SUCCESS) {
+                isSpeaking = true
+            } else {
+                isSpeaking = false
                 releaseAudioFocus()
                 onComplete?.invoke()
             }
@@ -350,13 +414,19 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
     }
 
     fun stop() {
+        isSpeaking = false
         releaseAudioFocus()
-        tts?.stop()
+        try {
+            tts?.stop()
+        } catch (_: Exception) {}
     }
 
     fun shutdown() {
+        isSpeaking = false
         releaseAudioFocus()
-        tts?.stop()
-        tts?.shutdown()
+        try {
+            tts?.stop()
+            tts?.shutdown()
+        } catch (_: Exception) {}
     }
 }

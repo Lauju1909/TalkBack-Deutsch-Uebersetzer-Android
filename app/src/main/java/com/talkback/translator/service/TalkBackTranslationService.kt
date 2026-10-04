@@ -250,7 +250,12 @@ class TalkBackTranslationService : AccessibilityService() {
     }
 
     override fun onGesture(gestureEvent: AccessibilityGestureEvent): Boolean {
-        if (handleGestureAction(gestureEvent.gestureId)) {
+        if (speechManager.isSpeakingNow) {
+            Log.d(TAG, "Gesture started while speaking -> interrupting German voice")
+            speechManager.stop()
+        }
+        val gestureId = gestureEvent.gestureId
+        if (handleGestureAction(gestureId)) {
             return true
         }
         return super.onGesture(gestureEvent)
@@ -258,6 +263,10 @@ class TalkBackTranslationService : AccessibilityService() {
 
     @Deprecated("Deprecated in Java")
     override fun onGesture(gestureId: Int): Boolean {
+        if (speechManager.isSpeakingNow) {
+            Log.d(TAG, "Legacy gesture $gestureId started while speaking -> interrupting German voice")
+            speechManager.stop()
+        }
         if (handleGestureAction(gestureId)) {
             return true
         }
@@ -273,12 +282,30 @@ class TalkBackTranslationService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
 
+        val eventType = event.eventType
+
+        // 1. Wenn die deutsche Übersetzung gerade spricht und der Nutzer den Bildschirm berührt,
+        // navigiert, klickt, scrollt oder ein neues Element fokussiert:
+        // Deutsche Stimme sofort unterbrechen ("die stimme soll die deutsche unterbrechen können")
+        if (speechManager.isSpeakingNow) {
+            when (eventType) {
+                AccessibilityEvent.TYPE_TOUCH_INTERACTION_START,
+                AccessibilityEvent.TYPE_TOUCH_EXPLORATION_GESTURE_START,
+                AccessibilityEvent.TYPE_GESTURE_DETECTION_START,
+                AccessibilityEvent.TYPE_VIEW_CLICKED,
+                AccessibilityEvent.TYPE_VIEW_SCROLLED,
+                AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED -> {
+                    Log.d(TAG, "User action/event $eventType while speaking -> interrupting German TTS")
+                    speechManager.stop()
+                }
+            }
+        }
+
         // Banking-Apps (Sparkasse, S-pushTAN etc.) aus Sicherheitsgründen vollständig ignorieren
         if (isBankingApp(event.packageName)) {
             return
         }
 
-        val eventType = event.eventType
         val isRelevantEvent = when (eventType) {
             AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED,
             AccessibilityEvent.TYPE_VIEW_FOCUSED,
